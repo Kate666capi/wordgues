@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Password Guessing Game - Difficulty & Scoring</title>
+<style>
+  body {
+    background: #222;
+    color: #eee;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+    min-height: 100vh;
+    user-select: none;
+  }
+  h1 {
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+  #passwordDisplay {
+    font-size: 3rem;
+    letter-spacing: 1.5rem;
+    margin-bottom: 1rem;
+    font-weight: bold;
+  }
+  #guessSection {
+    margin-bottom: 1rem;
+  }
+  input[type="text"] {
+    font-size: 2rem;
+    width: 60px;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 0.2rem;
+  }
+  button {
+    font-size: 1.5rem;
+    margin-left: 1rem;
+    padding: 0.3rem 1rem;
+    cursor: pointer;
+  }
+  #feedback {
+    font-size: 1.2rem;
+    margin-top: 1rem;
+    min-height: 1.5rem;
+  }
+  #livesLeft {
+    margin-top: 0.5rem;
+  }
+  #restartBtn, #buyHelpBtn, #buyWordBtn {
+    margin-top: 1rem;
+    display: none;
+  }
+  #scoreDisplay {
+    margin-top: 1rem;
+    font-size: 1.2rem;
+  }
+</style>
+</head>
+<body>
+
+<h1>Password Guessing Game<br><small>Difficulty & Scoring</small></h1>
+
+<div id="passwordDisplay"></div>
+
+<div id="guessSection">
+  <label for="letterInput">Guess a letter:</label>
+  <input type="text" id="letterInput" maxlength="1" autocomplete="off" />
+  <button id="submitBtn">Guess</button>
+</div>
+
+<div id="feedback"></div>
+<div id="livesLeft"></div>
+<div id="scoreDisplay">Score: 40</div>
+
+<button id="buyHelpBtn">Buy Help (5 points)</button>
+<button id="buyWordBtn">Buy Word (30 points)</button>
+<button id="restartBtn"></button>
+
+<script>
+(() => {
+  const maxLives = 5;
+
+  // Easy words (shorter, common)
+  const easyWords = [
+    "CAT", "DOG", "GIRL", "SISTER", "HOUSE", "TREE", "BOOK", "FISH", "ROAD", "TIME",
+    "PERSON", "YEAR", "WAY", "DAY", "THING", "MAN", "WORLD", "LIFE", "HAND", "CHILD"
+  ];
+
+  // Very difficult words (long, uncommon, tricky)
+  const veryDifficultWords = [
+    "QUINTESSENTIAL", "PSYCHOANALYSIS", "HIPPOPOTAMUS", "EXTRATERRESTRIAL", "CONUNDRUM",
+    "MNEMONIC", "ZYZZYVA", "XENOPHOBIA", "CRYPTOMNESIA", "KALEIDOSCOPE"
+  ];
+
+  // Randomly choose if the word is from easy or difficult pool
+  // 75% chance easy, 25% chance very difficult
+  function choosePassword() {
+    if (Math.random() < 0.25) {
+      return veryDifficultWords[Math.floor(Math.random() * veryDifficultWords.length)];
+    } else {
+      return easyWords[Math.floor(Math.random() * easyWords.length)];
+    }
+  }
+
+  let password = "";
+  let lives = maxLives;
+  let guessedLetters = [];
+  let totalAttempts = 0;
+  let score = 40; // Start with 40 points for first-time players
+  let gameActive = true;
+
+  const passwordDisplay = document.getElementById("passwordDisplay");
+  const letterInput = document.getElementById("letterInput");
+  const submitBtn = document.getElementById("submitBtn");
+  const feedback = document.getElementById("feedback");
+  const livesLeftDisplay = document.getElementById("livesLeft");
+  const restartBtn = document.getElementById("restartBtn");
+  const buyHelpBtn = document.getElementById("buyHelpBtn");
+  const buyWordBtn = document.getElementById("buyWordBtn");
+  const scoreDisplay = document.getElementById("scoreDisplay");
+
+  function resetGame() {
+    password = choosePassword();
+    lives = maxLives;
+    guessedLetters = Array(password.length).fill("_");
+    totalAttempts = 0;
+    feedback.textContent = "";
+    feedback.style.color = "#eee";
+    restartBtn.style.display = "none";
+    restartBtn.textContent = "";
+    gameActive = true;
+    submitBtn.disabled = false;
+    letterInput.disabled = false;
+    updateButtons();
+    updateDisplay();
+  }
+
+  function updateButtons() {
+    buyHelpBtn.style.display = (score >= 5 && gameActive) ? "inline-block" : "none";
+    buyWordBtn.style.display = (score >= 30 && gameActive) ? "inline-block" : "none";
+    restartBtn.style.display = "none"; // will show on game over
+  }
+
+  function updateDisplay() {
+    passwordDisplay.textContent = guessedLetters.join(" ");
+    livesLeftDisplay.textContent = `Lives left: ${lives}`;
+    scoreDisplay.textContent = `Score: ${score}`;
+    letterInput.value = "";
+    letterInput.focus();
+    updateButtons();
+  }
+
+  function checkWin() {
+    return guessedLetters.join("") === password;
+  }
+
+  function calculateWinPoints(word) {
+    // Check if word is in very difficult list (case sensitive, so compare uppercase)
+    if (veryDifficultWords.includes(word)) {
+      return 5;
+    } else if (word.length >= 6) {
+      return 2;
+    } else {
+      return 1;
+    }
+  }
+
+  function gameOver(won) {
+    gameActive = false;
+    submitBtn.disabled = true;
+    letterInput.disabled = true;
+    buyHelpBtn.style.display = "none";
+    buyWordBtn.style.display = "none";
+
+    if (won) {
+      const pointsEarned = calculateWinPoints(password);
+      score += pointsEarned;
+      feedback.textContent = `🎉 Congrats! You guessed the word: ${password} in ${totalAttempts} attempts! (+${pointsEarned} point${pointsEarned > 1 ? "s" : ""})`;
+      feedback.style.color = "#4caf50";
+      restartBtn.textContent = "Game Over - Play Again";
+    } else {
+      feedback.textContent = `😞 Game Over! Out of lives. The word was: ${password}`;
+      feedback.style.color = "#e53935";
+      restartBtn.textContent = "Try Again";
+    }
+    restartBtn.style.display = "inline-block";
+    livesLeftDisplay.textContent = "";
+    scoreDisplay.textContent = `Score: ${score}`;
+  }
+
+  submitBtn.addEventListener("click", () => {
+    if (!gameActive) return;
+    let guess = letterInput.value.toUpperCase();
+    if (!guess.match(/^[A-Z]$/)) {
+      feedback.textContent = "Please enter a single letter A-Z.";
+      feedback.style.color = "#ffca28";
+      letterInput.value = "";
+      return;
+    }
+    if (guessedLetters.includes(guess)) {
+      feedback.textContent = `You already revealed the letter '${guess}'. Try another.`;
+      feedback.style.color = "#ffca28";
+      letterInput.value = "";
+      return;
+    }
+
+    totalAttempts++;
+
+    if (password.includes(guess)) {
+      for (let i = 0; i < password.length; i++) {
+        if (password[i] === guess) {
+          guessedLetters[i] = guess;
+        }
+      }
+      feedback.textContent = `Good job! Letter '${guess}' is in the word.`;
+      feedback.style.color = "#4caf50";
+    } else {
+      lives--;
+      feedback.textContent = `Wrong letter. You lost 1 life.`;
+      feedback.style.color = "#e53935";
+      if (lives === 0) {
+        updateDisplay();
+        gameOver(false);
+        return;
+      }
+    }
+
+    updateDisplay();
+
+    if (checkWin()) {
+      gameOver(true);
+    }
+  });
+
+  buyHelpBtn.addEventListener("click", () => {
+    if (score < 5 || !gameActive) return;
+
+    // Find indexes of letters still hidden
+    let hiddenIndexes = [];
+    for (let i = 0; i < guessedLetters.length; i++) {
+      if (guessedLetters[i] === "_") hiddenIndexes.push(i);
+    }
+
+    if (hiddenIndexes.length === 0) {
+      feedback.textContent = "All letters already revealed!";
+      feedback.style.color = "#ffca28";
+      buyHelpBtn.style.display = "none";
+      return;
+    }
+
+    // Reveal one random hidden letter
+    const revealIndex = hiddenIndexes[Math.floor(Math.random() * hiddenIndexes.length)];
+    const revealLetter = password[revealIndex];
+    guessedLetters[revealIndex] = revealLetter;
+
+    score -= 5;
+    feedback.textContent = `Help used! Letter '${revealLetter}' revealed. (-5 points)`;
+    feedback.style.color = "#2196f3";
+    updateDisplay();
+
+    if (checkWin()) {
+      gameOver(true);
+    }
+  });
+
+  buyWordBtn.addEventListener("click", () => {
+    if (score < 30 || !gameActive) return;
+
+    for (let i = 0; i < password.length; i++) {
+      guessedLetters[i] = password[i];
+    }
+
+    score -= 30;
+    feedback.textContent = `Word purchased! The entire word is revealed. (-30 points)`;
+    feedback.style.color = "#2196f3";
+    updateDisplay();
+
+    gameOver(true);
+  });
+
+  restartBtn.addEventListener("click", () => {
+    resetGame();
+  });
+
+  letterInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !submitBtn.disabled) {
+      submitBtn.click();
+    }
+  });
+
+  resetGame();
+})();
+</script>
+
+</body>
+</html>
